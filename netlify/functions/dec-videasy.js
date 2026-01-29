@@ -90,14 +90,23 @@ exports.handler = async function(event) {
         return { statusCode: 204, headers: corsHeaders, body: '' };
     }
 
+    console.log("[Videasy-Decrypt] Request received");
     try {
-        var body = JSON.parse(event.body);
+        var body;
+        try {
+            body = JSON.parse(event.body);
+        } catch (je) {
+            return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Invalid JSON body" }) };
+        }
+
         var text = body.text;
         var id = body.id;
         
         if (!text || !id) {
             throw new Error("Missing required params: text and id");
         }
+
+        console.log("[Videasy-Decrypt] Text length:", text.length, "ID:", id);
 
         // WASM Setup
         var possiblePaths = [
@@ -110,6 +119,7 @@ exports.handler = async function(event) {
             try {
                 if (fs.existsSync(possiblePaths[pIdx])) {
                     wasmBytes = fs.readFileSync(possiblePaths[pIdx]);
+                    console.log("[Videasy-Decrypt] WASM found at:", possiblePaths[pIdx]);
                     break;
                 }
             } catch(we) {}
@@ -136,10 +146,12 @@ exports.handler = async function(event) {
           return ptr;
         };
 
+        console.log("[Videasy-Decrypt] Instantiating WASM...");
         var result = await WebAssembly.instantiate(wasmBytes, {
           env: { seed: function() { return Math.random(); }, abort: function() {} }
         });
         wasm = result.instance.exports;
+        console.log("[Videasy-Decrypt] WASM ready");
 
         var servePtr = wasm.serve();
         var wasmCode = readStr(servePtr);
@@ -163,6 +175,7 @@ exports.handler = async function(event) {
         }
 
         if (!context.hash) throw new Error("WASM Bridge timeout");
+        console.log("[Videasy-Decrypt] Hash generated");
         
         wasm.verify(writeStr(context.hash));
 
@@ -170,6 +183,7 @@ exports.handler = async function(event) {
         var mid = readStr(midPtr);
         
         if (!mid) throw new Error("WASM decryption failed");
+        console.log("[Videasy-Decrypt] WASM decrypted, length:", mid.length);
 
         var salt_c = "8c465aa8af6cbfd4c1f91bf0c8d678ba";
         var xor = 0;
@@ -197,13 +211,16 @@ exports.handler = async function(event) {
           if (resAES) { 
             try { 
                 finalResult = JSON.parse(resAES); 
-                if (finalResult) break;
+                if (finalResult) {
+                    console.log("[Videasy-Decrypt] AES success with trial:", tIdx);
+                    break;
+                }
             } catch(e) {} 
           }
         }
         
         if (!finalResult && mid.trim().charAt(0) === '{') {
-            try { finalResult = JSON.parse(mid); } catch(e) {}
+            try { finalResult = JSON.parse(mid); console.log("[Videasy-Decrypt] Direct JSON parse"); } catch(e) {}
         }
         
         if (!finalResult) throw new Error("AES decryption failed");
@@ -211,13 +228,14 @@ exports.handler = async function(event) {
         return {
             statusCode: 200,
             headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 200, result: finalResult })
+            body: JSON.stringify(finalResult)
         };
     } catch (e) {
+        console.error("[Videasy-Decrypt-Fatal]", e.message);
         return {
             statusCode: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ status: 500, error: e.message })
+            body: JSON.stringify({ error: e.message })
         };
     }
 };

@@ -65,6 +65,7 @@ async function createWasmInstance() {
     for (var i = 0; i < possiblePaths.length; i++) {
         try { if (fs.existsSync(possiblePaths[i])) { 
             buffer = fs.readFileSync(possiblePaths[i]); 
+            console.log("[Hahoy-Decrypt] WASM found at:", possiblePaths[i]);
             break; 
         } } catch(we) {}
     }
@@ -100,8 +101,10 @@ async function createWasmInstance() {
         }
     };
     
+    console.log("[Hahoy-Decrypt] Instantiating WASM...");
     var result = await WebAssembly.instantiate(buffer, imports);
     wasm = result.instance.exports;
+    console.log("[Hahoy-Decrypt] WASM ready");
     return result.instance;
 }
 
@@ -123,6 +126,7 @@ exports.handler = async function(event) {
     var corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: corsHeaders, body: '' };
     
+    console.log("[Hahoy-Decrypt] Request received");
     try {
         var body = JSON.parse(event.body);
         var text = body.text;
@@ -135,12 +139,16 @@ exports.handler = async function(event) {
         try { if (encryptedData.startsWith('{')) { var j = JSON.parse(encryptedData); encryptedData = j.encryptedData || j.data || encryptedData; } } catch(e) {}
         if (typeof encryptedData === 'string') encryptedData = encryptedData.replace(/^"|"$/g, '');
 
+        console.log("[Hahoy-Decrypt] Encrypted length:", encryptedData.length);
+
         var instance = await createWasmInstance();
         var key = ma(334);
+        console.log("[Hahoy-Decrypt] Key derived");
         
         var p1 = passStringToWasm0(instance, encryptedData);
         var p2 = passStringToWasm0(instance, key);
         
+        console.log("[Hahoy-Decrypt] Running WASM parser...");
         var result = instance.exports.parser(p1.ptr, p1.len, p2.ptr, p2.len);
         
         var mem32 = new Int32Array(instance.exports.memory.buffer);
@@ -148,12 +156,15 @@ exports.handler = async function(event) {
         var outLen = mem32[(result >>> 2) + 1];
         
         if (!outPtr || outLen <= 0) throw new Error("WASM Parser output error");
+        console.log("[Hahoy-Decrypt] Parser success");
 
         var wasmOutput = getStringFromWasm0(instance, outPtr, outLen);
         var finalJson = processOutput(wasmOutput);
         
-        return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 200, result: JSON.parse(finalJson) }) };
+        console.log("[Hahoy-Decrypt] Decryption completed");
+        return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: finalJson };
     } catch (e) {
-        return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ status: 500, error: e.message }) };
+        console.error("[Hahoy-Decrypt-Fatal]", e.message);
+        return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: e.message }) };
     }
 };
