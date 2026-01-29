@@ -152,9 +152,18 @@ exports.handler = async function(event) {
         var result = instance.exports.parser(p1.ptr, p1.len, p2.ptr, p2.len);
         
         console.log("[Hahoy-Decrypt] Parser returned result:", result);
-        var mem32 = new Int32Array(instance.exports.memory.buffer);
-        var outPtr = mem32[result >>> 2];
-        var outLen = mem32[(result >>> 2) + 1];
+        
+        var outPtr, outLen;
+        // Check if result is an array (new WASM format)
+        if (Array.isArray(result)) {
+            outPtr = result[0];
+            outLen = result[1];
+        } else {
+            // Old format: result is a pointer to struct
+            var mem32 = new Int32Array(instance.exports.memory.buffer);
+            outPtr = mem32[result >>> 2];
+            outLen = mem32[(result >>> 2) + 1];
+        }
         
         console.log("[Hahoy-Decrypt] outPtr:", outPtr, "outLen:", outLen);
         if (!outPtr || outLen <= 0) {
