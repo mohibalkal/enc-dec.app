@@ -92,40 +92,20 @@ exports.handler = async function(event) {
 
     console.log("[Videasy-Decrypt] Request received");
     try {
-        var body;
-        try {
-            body = JSON.parse(event.body);
-        } catch (je) {
-            return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Invalid JSON body" }) };
-        }
-
+        var body = JSON.parse(event.body);
         var text = body.text;
-        var id = body.id;
+        var id = (body.id || "").toString();
         
-        if (!text || !id) {
-            throw new Error("Missing required params: text and id");
-        }
+        if (!text || !id) throw new Error("Missing text or id");
 
         console.log("[Videasy-Decrypt] Text length:", text.length, "ID:", id);
 
-        // WASM Setup
-        var possiblePaths = [
-            path.join(__dirname, '../wasm/module.wasm'),
-            '/var/task/netlify/wasm/module.wasm'
-        ];
-        
-        var wasmBytes = null;
-        for (var pIdx = 0; pIdx < possiblePaths.length; pIdx++) {
-            try {
-                if (fs.existsSync(possiblePaths[pIdx])) {
-                    wasmBytes = fs.readFileSync(possiblePaths[pIdx]);
-                    console.log("[Videasy-Decrypt] WASM found at:", possiblePaths[pIdx]);
-                    break;
-                }
-            } catch(we) {}
-        }
-
-        if (!wasmBytes) throw new Error("WASM module.wasm not found");
+        // Fetch WASM from GitHub (Universal & Stable)
+        var wasmUrl = 'https://raw.githubusercontent.com/alkalx/enc-dec.app/main/netlify/wasm/module.wasm';
+        console.log("[Videasy-Decrypt] Fetching WASM from GitHub...");
+        var wasmResponse = await fetch(wasmUrl);
+        if (!wasmResponse.ok) throw new Error("Failed to fetch WASM from GitHub");
+        var wasmBytes = await wasmResponse.arrayBuffer();
         
         var wasm;
         var readStr = function(ptr) {
@@ -151,15 +131,14 @@ exports.handler = async function(event) {
           env: { seed: function() { return Math.random(); }, abort: function() {} }
         });
         wasm = result.instance.exports;
-        wasmBytes = null; // Free memory
-        console.log("[Videasy-Decrypt] WASM ready");
+        wasmBytes = null; // Free memory ASAP
 
         var servePtr = wasm.serve();
         var wasmCode = readStr(servePtr);
         
         var context = { 
           hash: null, 
-          mediaId: id.toString(),
+          mediaId: id,
           location: { href: 'https://player.videasy.net/', hostname: 'player.videasy.net', origin: 'https://player.videasy.net' },
           atob: function(s) { return Buffer.from(s, 'base64').toString('binary'); },
           btoa: function(s) { return Buffer.from(s, 'binary').toString('base64'); },
@@ -180,19 +159,17 @@ exports.handler = async function(event) {
         console.log("[Videasy-Decrypt] Hash generated");
         
         wasm.verify(writeStr(context.hash));
-
         var midPtr = wasm.decrypt(writeStr(text), parseFloat(id));
         var mid = readStr(midPtr);
         
-        // Clean up WASM instance
+        // Clean up WASM
         wasm = null;
         result = null;
-        if (global.gc) global.gc(); // Force garbage collection if available
         
         if (!mid) throw new Error("WASM decryption failed");
         console.log("[Videasy-Decrypt] WASM decrypted, length:", mid.length);
 
-
+        // AES Stage
         var salt_c = "8c465aa8af6cbfd4c1f91bf0c8d678ba";
         var xor = 0;
         for (var k = 0; k < salt_c.length; k++) xor ^= salt_c.charCodeAt(k);
@@ -211,32 +188,24 @@ exports.handler = async function(event) {
         
         var hids = new Hashids();
         var derivedKey = hids.encode(nums);
-        hids = null; // Free memory
+        hids = null;
 
         var trials = ["4VqE3#N7z9*8H1k", derivedKey];
         var finalResult = null;
         
-        // Try only the most likely keys to save memory
         for (var tIdx = 0; tIdx < trials.length; tIdx++) {
           var resAES = await decryptAES(mid, trials[tIdx]);
           if (resAES) { 
             try { 
                 finalResult = JSON.parse(resAES);
-                resAES = null; // Free memory
-                if (finalResult) {
-                    console.log("[Videasy-Decrypt] AES success with trial:", tIdx);
-                    break;
-                }
+                if (finalResult) break;
             } catch(e) {} 
           }
         }
         
         if (!finalResult && mid.trim().charAt(0) === '{') {
-            try { finalResult = JSON.parse(mid); console.log("[Videasy-Decrypt] Direct JSON parse"); } catch(e) {}
+            try { finalResult = JSON.parse(mid); } catch(e) {}
         }
-        
-        mid = null; // Free memory
-        
         
         if (!finalResult) throw new Error("AES decryption failed");
 
