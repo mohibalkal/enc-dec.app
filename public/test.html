@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار فك التشفير - KalStream API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .service-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .test-section {
+            display: none;
+        }
+
+        .test-section.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .decrypt-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .decrypt-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .decrypt-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-box.show {
+            display: block;
+        }
+
+        .result-box h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .result-content {
+            background: #2d3748;
+            color: #68d391;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.2em;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h4 {
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .stat-card p {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔓 اختبار فك التشفير</h1>
+
+        <div class="service-tabs">
+            <button class="tab active" data-service="videasy">Videasy</button>
+            <button class="tab" data-service="hahoy">Hahoy</button>
+        </div>
+
+        <!-- Videasy Test Section -->
+        <div class="test-section active" id="videasy-section">
+            <div class="input-group">
+                <label>TMDB ID:</label>
+                <input type="text" id="videasy-id" placeholder="مثال: 105248" value="105248">
+            </div>
+
+            <div class="input-group">
+                <label>النص المشفر (Encrypted Text):</label>
+                <textarea id="videasy-text" placeholder="الصق النص المشفر هنا..."></textarea>
+            </div>
+
+            <button class="decrypt-btn" id="videasy-btn">فك التشفير 🚀</button>
+
+            <div class="loading" id="videasy-loading">
+                جاري فك التشفير... ⏳
+            </div>
+
+            <div class="error" id="videasy-error"></div>
+
+            <div class="result-box" id="videasy-result">
+                <h3>النتيجة المفكوكة:</h3>
+                <div class="result-content" id="videasy-content"></div>
+                <div class="stats" id="videasy-stats"></div>
+            </div>
+        </div>
+
+        <!-- Hahoy Test Section -->
+        <div class="test-section" id="hahoy-section">
+            <div class="input-group">
+                <label>النص المشفر (Encrypted Text):</label>
+                <textarea id="hahoy-text" placeholder="الصق النص المشفر هنا..."></textarea>
+            </div>
+
+            <button class="decrypt-btn" id="hahoy-btn">فك التشفير 🚀</button>
+
+            <div class="loading" id="hahoy-loading">
+                جاري فك التشفير... ⏳
+            </div>
+
+            <div class="error" id="hahoy-error"></div>
+
+            <div class="result-box" id="hahoy-result">
+                <h3>النتيجة المفكوكة:</h3>
+                <div class="result-content" id="hahoy-content"></div>
+                <div class="stats" id="hahoy-stats"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const service = tab.dataset.service;
+                
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.test-section').forEach(s => s.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${service}-section`).classList.add('active');
+            });
+        });
+
+        // Videasy Decryption
+        document.getElementById('videasy-btn').addEventListener('click', async () => {
+            const text = document.getElementById('videasy-text').value.trim();
+            const id = document.getElementById('videasy-id').value.trim();
+            
+            hideAll('videasy');
+            
+            if (!text || !id) {
+                showError('videasy', 'الرجاء إدخال النص المشفر و TMDB ID');
+                return;
+            }
+
+            showLoading('videasy');
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch('/.netlify/functions/dec-videasy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, id })
+                });
+
+                const data = await response.json();
+                const duration = Date.now() - startTime;
+
+                if (!response.ok || data.status !== 200) {
+                    throw new Error(data.error || 'فشل فك التشفير');
+                }
+
+                showResult('videasy', data.result, duration);
+
+            } catch (error) {
+                showError('videasy', error.message);
+            } finally {
+                hideLoading('videasy');
+            }
+        });
+
+        // Hahoy Decryption
+        document.getElementById('hahoy-btn').addEventListener('click', async () => {
+            const text = document.getElementById('hahoy-text').value.trim();
+            
+            hideAll('hahoy');
+            
+            if (!text) {
+                showError('hahoy', 'الرجاء إدخال النص المشفر');
+                return;
+            }
+
+            showLoading('hahoy');
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch('/.netlify/functions/dec-hahoy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+                const duration = Date.now() - startTime;
+
+                if (!response.ok || data.status !== 200) {
+                    throw new Error(data.error || 'فشل فك التشفير');
+                }
+
+                showResult('hahoy', data.result, duration);
+
+            } catch (error) {
+                showError('hahoy', error.message);
+            } finally {
+                hideLoading('hahoy');
+            }
+        });
+
+        function hideAll(service) {
+            document.getElementById(`${service}-result`).classList.remove('show');
+            document.getElementById(`${service}-error`).classList.remove('show');
+        }
+
+        function showLoading(service) {
+            document.getElementById(`${service}-loading`).classList.add('show');
+            document.getElementById(`${service}-btn`).disabled = true;
+        }
+
+        function hideLoading(service) {
+            document.getElementById(`${service}-loading`).classList.remove('show');
+            document.getElementById(`${service}-btn`).disabled = false;
+        }
+
+        function showError(service, message) {
+            const errorEl = document.getElementById(`${service}-error`);
+            errorEl.textContent = '❌ ' + message;
+            errorEl.classList.add('show');
+        }
+
+        function showResult(service, result, duration) {
+            const contentEl = document.getElementById(`${service}-content`);
+            const statsEl = document.getElementById(`${service}-stats`);
+            
+            contentEl.textContent = JSON.stringify(result, null, 2);
+            
+            // Generate stats
+            const sources = result.sources?.length || 0;
+            const subtitles = result.subtitles?.length || 0;
+            
+            statsEl.innerHTML = `
+                <div class="stat-card">
+                    <h4>عدد المصادر</h4>
+                    <p>${sources}</p>
+                </div>
+                <div class="stat-card">
+                    <h4>عدد الترجمات</h4>
+                    <p>${subtitles}</p>
+                </div>
+                <div class="stat-card">
+                    <h4>وقت فك التشفير</h4>
+                    <p>${duration}ms</p>
+                </div>
+            `;
+            
+            document.getElementById(`${service}-result`).classList.add('show');
+        }
+    </script>
+</body>
+</html>

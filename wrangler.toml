@@ -1,0 +1,10 @@
+name = "kalstream-decrypt-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "e3d98bd235f38411b4cfefb2567578cf"
+
+[build]
+command = ""
+
+[build.upload]
+format = "service-worker"

@@ -1,0 +1,19 @@
+{
+  "name": "kalstream-decrypt-api",
+  "version": "1.0.0",
+  "description": "KalStream Decryption API Service - Videasy & Hahoy (Cloudflare Workers)",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": ["decryption", "videasy", "hahoy", "api", "cloudflare"],
+  "author": "KalStream",
+  "license": "MIT",
+  "dependencies": {
+    "crypto-js": "^4.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
