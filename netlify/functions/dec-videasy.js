@@ -223,12 +223,13 @@ exports.handler = async function(event) {
             try { finalResult = JSON.parse(mid); console.log("[Videasy-Decrypt] Direct JSON parse"); } catch(e) {}
         }
         
+        
         if (!finalResult) throw new Error("AES decryption failed");
 
         return {
             statusCode: 200,
             headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-            body: JSON.stringify(finalResult)
+            body: JSON.stringify({ status: 200, result: finalResult })
         };
     } catch (e) {
         console.error("[Videasy-Decrypt-Fatal]", e.message);
