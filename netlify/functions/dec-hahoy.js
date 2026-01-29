@@ -176,8 +176,14 @@ exports.handler = async function(event) {
         console.log("[Hahoy-Decrypt] WASM output length:", wasmOutput.length);
         var finalJson = processOutput(wasmOutput);
         
+        
         console.log("[Hahoy-Decrypt] Decryption completed");
-        return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: finalJson };
+        var parsedResult = JSON.parse(finalJson);
+        return { 
+            statusCode: 200, 
+            headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ status: 200, result: parsedResult }) 
+        };
     } catch (e) {
         console.error("[Hahoy-Decrypt-Fatal]", e.message);
         return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: e.message }) };
