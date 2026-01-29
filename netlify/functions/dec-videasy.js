@@ -151,6 +151,7 @@ exports.handler = async function(event) {
           env: { seed: function() { return Math.random(); }, abort: function() {} }
         });
         wasm = result.instance.exports;
+        wasmBytes = null; // Free memory
         console.log("[Videasy-Decrypt] WASM ready");
 
         var servePtr = wasm.serve();
@@ -168,6 +169,7 @@ exports.handler = async function(event) {
 
         var bridgeFn = new Function('window', "with(window) { " + wasmCode + " }");
         bridgeFn(context);
+        wasmCode = null; // Free memory
         
         var attempts = 0;
         while (!context.hash && attempts++ < 60) {
@@ -182,8 +184,14 @@ exports.handler = async function(event) {
         var midPtr = wasm.decrypt(writeStr(text), parseFloat(id));
         var mid = readStr(midPtr);
         
+        // Clean up WASM instance
+        wasm = null;
+        result = null;
+        if (global.gc) global.gc(); // Force garbage collection if available
+        
         if (!mid) throw new Error("WASM decryption failed");
         console.log("[Videasy-Decrypt] WASM decrypted, length:", mid.length);
+
 
         var salt_c = "8c465aa8af6cbfd4c1f91bf0c8d678ba";
         var xor = 0;
@@ -203,14 +211,18 @@ exports.handler = async function(event) {
         
         var hids = new Hashids();
         var derivedKey = hids.encode(nums);
+        hids = null; // Free memory
 
-        var trials = ["4VqE3#N7z9*8H1k", derivedKey, "", hex, id];
+        var trials = ["4VqE3#N7z9*8H1k", derivedKey];
         var finalResult = null;
+        
+        // Try only the most likely keys to save memory
         for (var tIdx = 0; tIdx < trials.length; tIdx++) {
           var resAES = await decryptAES(mid, trials[tIdx]);
           if (resAES) { 
             try { 
-                finalResult = JSON.parse(resAES); 
+                finalResult = JSON.parse(resAES);
+                resAES = null; // Free memory
                 if (finalResult) {
                     console.log("[Videasy-Decrypt] AES success with trial:", tIdx);
                     break;
@@ -222,6 +234,8 @@ exports.handler = async function(event) {
         if (!finalResult && mid.trim().charAt(0) === '{') {
             try { finalResult = JSON.parse(mid); console.log("[Videasy-Decrypt] Direct JSON parse"); } catch(e) {}
         }
+        
+        mid = null; // Free memory
         
         
         if (!finalResult) throw new Error("AES decryption failed");
