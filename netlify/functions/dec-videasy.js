@@ -111,21 +111,31 @@ exports.handler = async function(event) {
         // WASM Setup
         var possiblePaths = [
             path.join(__dirname, '../wasm/module.wasm'),
-            '/var/task/netlify/wasm/module.wasm'
+            path.join(__dirname, '../../wasm/module.wasm'),
+            '/var/task/netlify/wasm/module.wasm',
+            path.join(process.cwd(), 'netlify/wasm/module.wasm'),
+            path.join(process.cwd(), 'wasm/module.wasm')
         ];
         
         var wasmBytes = null;
+        var foundPath = null;
         for (var pIdx = 0; pIdx < possiblePaths.length; pIdx++) {
             try {
                 if (fs.existsSync(possiblePaths[pIdx])) {
                     wasmBytes = fs.readFileSync(possiblePaths[pIdx]);
-                    console.log("[Videasy-Decrypt] WASM found at:", possiblePaths[pIdx]);
+                    foundPath = possiblePaths[pIdx];
+                    console.log("[Videasy-Decrypt] WASM found at:", foundPath);
                     break;
                 }
-            } catch(we) {}
+            } catch(we) {
+                console.log("[Videasy-Decrypt] Failed to read:", possiblePaths[pIdx], we.message);
+            }
         }
 
-        if (!wasmBytes) throw new Error("WASM module.wasm not found");
+        if (!wasmBytes) {
+            console.error("[Videasy-Decrypt] WASM not found. Tried:", possiblePaths);
+            throw new Error("WASM module.wasm not found at any location");
+        }
         
         var wasm;
         var readStr = function(ptr) {
