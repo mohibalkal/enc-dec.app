@@ -151,14 +151,20 @@ exports.handler = async function(event) {
         console.log("[Hahoy-Decrypt] Running WASM parser...");
         var result = instance.exports.parser(p1.ptr, p1.len, p2.ptr, p2.len);
         
+        console.log("[Hahoy-Decrypt] Parser returned result:", result);
         var mem32 = new Int32Array(instance.exports.memory.buffer);
         var outPtr = mem32[result >>> 2];
         var outLen = mem32[(result >>> 2) + 1];
         
-        if (!outPtr || outLen <= 0) throw new Error("WASM Parser output error");
+        console.log("[Hahoy-Decrypt] outPtr:", outPtr, "outLen:", outLen);
+        if (!outPtr || outLen <= 0) {
+            console.error("[Hahoy-Decrypt] Invalid WASM output - result:", result, "outPtr:", outPtr, "outLen:", outLen);
+            throw new Error("WASM Parser output error");
+        }
         console.log("[Hahoy-Decrypt] Parser success");
 
         var wasmOutput = getStringFromWasm0(instance, outPtr, outLen);
+        console.log("[Hahoy-Decrypt] WASM output length:", wasmOutput.length);
         var finalJson = processOutput(wasmOutput);
         
         console.log("[Hahoy-Decrypt] Decryption completed");
