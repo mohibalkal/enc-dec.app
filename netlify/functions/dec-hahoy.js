@@ -59,29 +59,17 @@ function processOutput(wasmOutput) {
 async function createWasmInstance() {
     var possiblePaths = [
         path.join(__dirname, '../wasm/decryptor.wasm'),
-        path.join(__dirname, '../../wasm/decryptor.wasm'),
-        '/var/task/netlify/wasm/decryptor.wasm',
-        path.join(process.cwd(), 'netlify/wasm/decryptor.wasm'),
-        path.join(process.cwd(), 'wasm/decryptor.wasm')
+        '/var/task/netlify/wasm/decryptor.wasm'
     ];
     var buffer = null;
-    var foundPath = null;
     for (var i = 0; i < possiblePaths.length; i++) {
-        try { 
-            if (fs.existsSync(possiblePaths[i])) { 
-                buffer = fs.readFileSync(possiblePaths[i]); 
-                foundPath = possiblePaths[i];
-                console.log("[Hahoy-Decrypt] WASM found at:", foundPath);
-                break; 
-            }
-        } catch(we) {
-            console.log("[Hahoy-Decrypt] Failed to read:", possiblePaths[i], we.message);
-        }
+        try { if (fs.existsSync(possiblePaths[i])) { 
+            buffer = fs.readFileSync(possiblePaths[i]); 
+            console.log("[Hahoy-Decrypt] WASM found at:", possiblePaths[i]);
+            break; 
+        } } catch(we) {}
     }
-    if (!buffer) {
-        console.error("[Hahoy-Decrypt] WASM not found. Tried:", possiblePaths);
-        throw new Error("WASM file not found at any location");
-    }
+    if (!buffer) throw new Error("WASM file not found");
     
     var wasm;
     var getMem = function() { return new Uint8Array(wasm.memory.buffer); };
